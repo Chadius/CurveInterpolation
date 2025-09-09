@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import {
     type LinearInterpolationFormula,
     LinearInterpolationService,
-} from "./linearInterpolation.ts"
+} from "./linearInterpolation"
 
 describe("Linear Interpolation", () => {
     describe("Creating linear formulas", () => {

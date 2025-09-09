@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { CurveInterpolationService } from "./curveInterpolation.ts"
+import { CurveInterpolationService } from "./curveInterpolation"
 
 describe("curveInterpolation", () => {
     describe("Validation during creation", () => {

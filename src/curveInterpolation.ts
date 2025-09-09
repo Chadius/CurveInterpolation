@@ -2,11 +2,11 @@ import {
     type InterpolationFormula,
     type LinearInterpolationFormula,
     LinearInterpolationService,
-} from "./linearInterpolation.ts"
+} from "./linearInterpolation"
 import {
     type InterpolationType,
     InterpolationTypeEnum,
-} from "./interpolationType.ts"
+} from "./interpolationType"
 
 interface Fragment {
     startTime: number

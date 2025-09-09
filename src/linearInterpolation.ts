@@ -1,7 +1,7 @@
 import {
     type InterpolationType,
     InterpolationTypeEnum,
-} from "./interpolationType.ts"
+} from "./interpolationType"
 
 export interface InterpolationFormula {
     type: InterpolationType

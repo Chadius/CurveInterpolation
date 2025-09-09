@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "tsc": "npx tsc --noEmit 2>&1 | head -10",
     "test-watch": "vitest",
     "format-check": "prettier --config .prettierrc.yaml --check .",
     "format-fix": "prettier --config .prettierrc.yaml --write ."
