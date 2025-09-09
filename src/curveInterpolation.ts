@@ -97,9 +97,10 @@ export const CurveInterpolationService = {
     },
     calculate: (formula: CurveInterpolation, time: number): number => {
         switch (true) {
-            case formula.easeIn && time < formula.main.startTime:
+            case formula?.easeIn != undefined && time < formula.main.startTime:
                 return calculateFragment(formula.easeIn, time)
-            case formula.easeOut && time >= formula.easeOut.startTime:
+            case formula?.easeOut != undefined &&
+                time >= formula.easeOut.startTime:
                 return calculateFragment(formula.easeOut, time)
             default:
                 return calculateFragment(formula.main, time)
