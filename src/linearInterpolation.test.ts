@@ -134,4 +134,17 @@ describe("Linear Interpolation", () => {
             ).toBeCloseTo(expectedDistanceTraveled(0.9))
         })
     })
+
+    it("can handle negative distance", () => {
+        const formula = LinearInterpolationService.new({
+            startPoint: [0, 0],
+            endPoint: [10, -10],
+        })
+
+        expect(LinearInterpolationService.calculate(formula, 0)).toBeCloseTo(0)
+
+        expect(LinearInterpolationService.calculate(formula, 10)).toBeCloseTo(
+            -10
+        )
+    })
 })

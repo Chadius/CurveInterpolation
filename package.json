@@ -1,24 +1,24 @@
 {
-  "name": "easing-formulas",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "tsc": "npx tsc --noEmit 2>&1 | head -10",
-    "test-watch": "vitest",
-    "format-check": "prettier --config .prettierrc.yaml --check .",
-    "format-fix": "prettier --config .prettierrc.yaml --write ."
-  },
-  "author": "Chadius",
-  "license": "ISC",
-  "devDependencies": {
-    "prettier": "^3.6.2",
-    "typescript": "~5.8.3",
-    "vite": "^7.1.2",
-    "vitest": "^3.2.4"
-  }
+    "name": "easing-formulas",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "test": "vitest run",
+        "tsc": "npx tsc --noEmit 2>&1 | head -10",
+        "test-watch": "vitest",
+        "format-check": "prettier --config .prettierrc.yaml --check .",
+        "format-fix": "prettier --config .prettierrc.yaml --write ."
+    },
+    "author": "Chadius",
+    "license": "ISC",
+    "devDependencies": {
+        "prettier": "^3.6.2",
+        "typescript": "~5.8.3",
+        "vite": "^7.1.2",
+        "vitest": "^3.2.4"
+    }
 }

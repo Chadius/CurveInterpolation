@@ -134,11 +134,9 @@ const sanitizeStartPointAndEndPoint = (
 const sanitizeEaseIn = ({
     easeIn,
     timeElapsed,
-    distanceTraveled,
 }: {
     easeIn?: { time: number; distance: number }
     timeElapsed: number
-    distanceTraveled: number
 }) => {
     if (easeIn == undefined) return
 
@@ -151,25 +149,15 @@ const sanitizeEaseIn = ({
             throw new Error(
                 "[CurveInterpolationService.sanitizeEaseIn]: easeIn.time must be less than the elapsed time"
             )
-        case easeIn.distance < 0:
-            throw new Error(
-                "[CurveInterpolationService.sanitizeEaseIn]: easeIn.distance cannot be negative"
-            )
-        case easeIn.distance > distanceTraveled:
-            throw new Error(
-                "[CurveInterpolationService.sanitizeEaseIn]: easeIn.distance must be less than the distance traveled"
-            )
     }
 }
 
 const sanitizeEaseOut = ({
     easeOut,
     timeElapsed,
-    distanceTraveled,
 }: {
     easeOut?: { time: number; distance: number }
     timeElapsed: number
-    distanceTraveled: number
 }) => {
     if (easeOut == undefined) return
 
@@ -182,14 +170,6 @@ const sanitizeEaseOut = ({
             throw new Error(
                 "[CurveInterpolationService.sanitizeEaseOut]: easeOut.time must be less than the elapsed time"
             )
-        case easeOut.distance < 0:
-            throw new Error(
-                "[CurveInterpolationService.sanitizeEaseOut]: easeOut.distance cannot be negative"
-            )
-        case easeOut.distance > distanceTraveled:
-            throw new Error(
-                "[CurveInterpolationService.sanitizeEaseOut]: easeOut.distance must be less than the distance traveled"
-            )
     }
 }
 
@@ -197,12 +177,10 @@ const sanitizeEaseInAndEaseOut = ({
     easeOut,
     easeIn,
     timeElapsed,
-    distanceTraveled,
 }: {
     easeOut?: { time: number; distance: number }
     easeIn?: { time: number; distance: number }
     timeElapsed: number
-    distanceTraveled: number
 }) => {
     if (easeIn == undefined || easeOut == undefined) return
 
@@ -211,13 +189,8 @@ const sanitizeEaseInAndEaseOut = ({
             "[CurveInterpolationService.sanitizeEaseInAndEaseOut]: easeIn.time + easeOut.time must be less than the elapsed time"
         )
     }
-
-    if (easeIn.distance + easeOut.distance > distanceTraveled) {
-        throw new Error(
-            "[CurveInterpolationService.sanitizeEaseInAndEaseOut]: easeIn.distance + easeOut.distance must be less than the distance traveled"
-        )
-    }
 }
+
 const sanitize = ({
     startPoint,
     endPoint,
@@ -243,22 +216,18 @@ const sanitize = ({
             "[CurveInterpolationService.sanitize]: start point and end point must have different time values"
         )
     }
-    const distanceTraveled = endPoint[1] - startPoint[1]
     sanitizeEaseIn({
         easeIn: easeIn,
         timeElapsed: timeElapsed,
-        distanceTraveled: distanceTraveled,
     })
     sanitizeEaseOut({
         easeOut: easeOut,
         timeElapsed: timeElapsed,
-        distanceTraveled: distanceTraveled,
     })
     sanitizeEaseInAndEaseOut({
         easeOut: easeOut,
         easeIn: easeIn,
         timeElapsed: timeElapsed,
-        distanceTraveled: distanceTraveled,
     })
 }
 
@@ -293,10 +262,8 @@ const calculateEaseInFragment = ({
     if (easeIn.distance == 0) return undefined
 
     const easeInEndTime = startPoint[0] + easeIn.time
-    const easeInEndDistance = calculateInterpolationFormula(
-        formulaWithoutEasing,
-        easeIn.distance
-    )
+    const easeInEndDistance =
+        calculateInterpolationFormula(formulaWithoutEasing, 0) + easeIn.distance
     let easeInFormula = newInterpolationFormula({
         type: easeIn.type,
         startPoint,

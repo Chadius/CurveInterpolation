@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
 import { CurveInterpolationService } from "./curveInterpolation"
 
 describe("curveInterpolation", () => {
@@ -97,37 +97,6 @@ describe("curveInterpolation", () => {
                 "easeIn.time must be less than the elapsed time"
             )
         })
-        it("throws an error if ease in distance is invalid", () => {
-            const shouldThrowErrorBecauseNegative = () => {
-                CurveInterpolationService.new({
-                    startPoint: [0, 0],
-                    endPoint: [2, 2],
-                    easeIn: {
-                        time: 1,
-                        distance: -1,
-                    },
-                })
-            }
-
-            expect(shouldThrowErrorBecauseNegative).toThrowError(
-                "easeIn.distance cannot be negative"
-            )
-
-            const shouldThrowErrorBecauseTooBig = () => {
-                CurveInterpolationService.new({
-                    startPoint: [0, 0],
-                    endPoint: [2, 2],
-                    easeIn: {
-                        time: 1,
-                        distance: 9001,
-                    },
-                })
-            }
-
-            expect(shouldThrowErrorBecauseTooBig).toThrowError(
-                "easeIn.distance must be less than the distance traveled"
-            )
-        })
         it("throws an error if ease out time is invalid", () => {
             const shouldThrowErrorBecauseNegative = () => {
                 CurveInterpolationService.new({
@@ -153,31 +122,6 @@ describe("curveInterpolation", () => {
                 "easeOut.time must be less than the elapsed time"
             )
         })
-        it("throws an error if ease out distance is invalid", () => {
-            const shouldThrowErrorBecauseNegative = () => {
-                CurveInterpolationService.new({
-                    startPoint: [0, 0],
-                    endPoint: [2, 2],
-                    easeOut: { time: 1, distance: -1 },
-                })
-            }
-
-            expect(shouldThrowErrorBecauseNegative).toThrowError(
-                "easeOut.distance cannot be negative"
-            )
-
-            const shouldThrowErrorBecauseTooBig = () => {
-                CurveInterpolationService.new({
-                    startPoint: [0, 0],
-                    endPoint: [2, 2],
-                    easeOut: { time: 1, distance: 9001 },
-                })
-            }
-
-            expect(shouldThrowErrorBecauseTooBig).toThrowError(
-                "easeOut.distance must be less than the distance traveled"
-            )
-        })
         it("throws an error if ease in plus ease out time take longer than the elapsed time", () => {
             const shouldThrowErrorBecauseTooBig = () => {
                 CurveInterpolationService.new({
@@ -193,23 +137,6 @@ describe("curveInterpolation", () => {
 
             expect(shouldThrowErrorBecauseTooBig).toThrowError(
                 "easeIn.time + easeOut.time must be less than the elapsed time"
-            )
-        })
-        it("throws an error if ease in plus ease out distance is longer than the distance traveled", () => {
-            const shouldThrowErrorBecauseTooBig = () => {
-                CurveInterpolationService.new({
-                    startPoint: [0, 0],
-                    endPoint: [2, 2],
-                    easeIn: {
-                        time: 1,
-                        distance: 2,
-                    },
-                    easeOut: { time: 1, distance: 2 },
-                })
-            }
-
-            expect(shouldThrowErrorBecauseTooBig).toThrowError(
-                "easeIn.distance + easeOut.distance must be less than the distance traveled"
             )
         })
     })
