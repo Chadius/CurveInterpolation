@@ -1,11 +1,7 @@
 import {
-    type InterpolationType,
+    type InterpolationFormula,
     InterpolationTypeEnum,
 } from "./interpolationType"
-
-export interface InterpolationFormula {
-    type: InterpolationType
-}
 
 export interface LinearInterpolationFormula extends InterpolationFormula {
     slope: number

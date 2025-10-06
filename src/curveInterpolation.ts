@@ -1,9 +1,9 @@
 import {
-    type InterpolationFormula,
     type LinearInterpolationFormula,
     LinearInterpolationService,
 } from "./linearInterpolation"
 import {
+    type InterpolationFormula,
     type InterpolationType,
     InterpolationTypeEnum,
 } from "./interpolationType"
@@ -17,6 +17,7 @@ export interface CurveInterpolation {
     easeIn?: Fragment
     main: Fragment
     easeOut?: Fragment
+    timeRange: [number, number]
 }
 
 export const CurveInterpolationService = {
@@ -93,18 +94,16 @@ export const CurveInterpolationService = {
             easeIn: easeInFragment,
             main,
             easeOut: easeOutFragment,
+            timeRange: [mainStartTime, mainEndTime],
         }
     },
-    calculate: (formula: CurveInterpolation, time: number): number => {
-        switch (true) {
-            case formula?.easeIn != undefined && time < formula.main.startTime:
-                return calculateFragment(formula.easeIn, time)
-            case formula?.easeOut != undefined &&
-                time >= formula.easeOut.startTime:
-                return calculateFragment(formula.easeOut, time)
-            default:
-                return calculateFragment(formula.main, time)
-        }
+    calculate: (formula: CurveInterpolation, time: number) =>
+        calculate(formula, time),
+    getStartPoint: (formula: CurveInterpolation): [number, number] => {
+        return [formula.timeRange[0], calculate(formula, formula.timeRange[0])]
+    },
+    getEndPoint: (formula: CurveInterpolation): [number, number] => {
+        return [formula.timeRange[1], calculate(formula, formula.timeRange[1])]
     },
 }
 
@@ -322,5 +321,16 @@ const calculateEaseOutFragment = ({
     return {
         interpolation: easeOutFormula,
         startTime: easeOutStartTime,
+    }
+}
+
+const calculate = (formula: CurveInterpolation, time: number): number => {
+    switch (true) {
+        case formula?.easeIn != undefined && time < formula.main.startTime:
+            return calculateFragment(formula.easeIn, time)
+        case formula?.easeOut != undefined && time >= formula.easeOut.startTime:
+            return calculateFragment(formula.easeOut, time)
+        default:
+            return calculateFragment(formula.main, time)
     }
 }

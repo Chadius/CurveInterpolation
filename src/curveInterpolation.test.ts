@@ -141,6 +141,16 @@ describe("curveInterpolation", () => {
         })
     })
 
+    it("can get the first and last points of the curve", () => {
+        const formula = CurveInterpolationService.new({
+            startPoint: [0, 0],
+            endPoint: [8, 8],
+        })
+
+        expect(CurveInterpolationService.getStartPoint(formula)).toEqual([0, 0])
+        expect(CurveInterpolationService.getEndPoint(formula)).toEqual([8, 8])
+    })
+
     it("without easing, use only main interpolation", () => {
         const formula = CurveInterpolationService.new({
             startPoint: [0, 0],
