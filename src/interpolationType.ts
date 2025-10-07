@@ -1,11 +1,12 @@
 export const InterpolationTypeEnum = {
     CONSTANT: "CONSTANT",
     LINEAR: "LINEAR",
+    SINE: "SINE",
 } as const satisfies Record<string, string>
 
 export type InterpolationType =
     (typeof InterpolationTypeEnum)[keyof typeof InterpolationTypeEnum]
 
-export interface InterpolationFormula {
+export interface InterpolationFormulaBase {
     type: InterpolationType
 }

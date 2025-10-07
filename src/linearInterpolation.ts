@@ -1,15 +1,15 @@
 import {
-    type InterpolationFormula,
+    type InterpolationFormulaBase,
     InterpolationTypeEnum,
 } from "./interpolationType"
 
-export interface LinearInterpolationNewArgs extends InterpolationFormula {
+export interface LinearInterpolationNewArgs extends InterpolationFormulaBase {
     type: typeof InterpolationTypeEnum.LINEAR
     startPoint: [number, number]
     endPoint: [number, number]
 }
 
-export interface LinearInterpolationFormula extends InterpolationFormula {
+export interface LinearInterpolationFormula extends InterpolationFormulaBase {
     slope: number
     offset: number
     startPoint: [number, number]
@@ -20,7 +20,10 @@ export const LinearInterpolationService = {
     new: ({
         startPoint,
         endPoint,
-    }: LinearInterpolationNewArgs): LinearInterpolationFormula => {
+    }: Omit<
+        LinearInterpolationNewArgs,
+        "type"
+    >): LinearInterpolationFormula => {
         sanitize({
             startPoint,
             endPoint,

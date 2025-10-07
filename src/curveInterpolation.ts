@@ -4,7 +4,7 @@ import {
     LinearInterpolationService,
 } from "./linearInterpolation"
 import {
-    type InterpolationFormula,
+    type InterpolationFormulaBase,
     InterpolationTypeEnum,
 } from "./interpolationType"
 import {
@@ -12,10 +12,15 @@ import {
     type ConstantInterpolationNewArgs,
     ConstantInterpolationService,
 } from "./constantInterpolation.ts"
+import {
+    type SineInterpolationFormula,
+    type SineInterpolationNewArgs,
+    SineInterpolationService,
+} from "./sineInterpolation.ts"
 
 interface Fragment {
     startTime: number
-    interpolation: InterpolationFormula
+    interpolation: InterpolationFormulaBase
 }
 
 export interface CurveInterpolation {
@@ -25,9 +30,23 @@ export interface CurveInterpolation {
     timeRange: [number, number]
 }
 
+type InterpolationFormula =
+    | ConstantInterpolationFormula
+    | LinearInterpolationFormula
+    | SineInterpolationFormula
+
 export type CurveInterpolationNewArgs =
-    | LinearInterpolationNewArgs
     | ConstantInterpolationNewArgs
+    | LinearInterpolationNewArgs
+    | SineInterpolationNewArgs
+
+export type PartialCurveInterpolationNewArgs =
+    | (Partial<ConstantInterpolationNewArgs> &
+          Pick<ConstantInterpolationNewArgs, "type">)
+    | (Partial<LinearInterpolationNewArgs> &
+          Pick<LinearInterpolationNewArgs, "type">)
+    | (Partial<SineInterpolationNewArgs> &
+          Pick<SineInterpolationNewArgs, "type" | "frequency" | "amplitude">)
 
 export const CurveInterpolationService = {
     new: ({
@@ -37,21 +56,28 @@ export const CurveInterpolationService = {
     }: {
         formulaSettings: CurveInterpolationNewArgs
         easeIn?: {
-            formulaSettings: Partial<CurveInterpolationNewArgs> &
-                Pick<CurveInterpolationNewArgs, "type">
+            formulaSettings: PartialCurveInterpolationNewArgs
             time: number
             distance: number
         }
         easeOut?: {
-            formulaSettings: Partial<CurveInterpolationNewArgs> &
-                Pick<CurveInterpolationNewArgs, "type">
+            formulaSettings: PartialCurveInterpolationNewArgs
             time: number
             distance: number
         }
     }): CurveInterpolation => {
-        if (formulaSettings.type != InterpolationTypeEnum.CONSTANT) {
-            const timeElapsed =
-                LinearInterpolationService.getTimeElapsed(formulaSettings)
+        let timeElapsed: number | undefined = undefined
+        switch (formulaSettings.type) {
+            case InterpolationTypeEnum.LINEAR:
+                timeElapsed =
+                    LinearInterpolationService.getTimeElapsed(formulaSettings)
+                break
+            case InterpolationTypeEnum.SINE:
+                timeElapsed =
+                    SineInterpolationService.getTimeElapsed(formulaSettings)
+                break
+        }
+        if (timeElapsed != undefined) {
             verifyEaseInOutTimeElapsed({
                 timeElapsed,
                 easeIn,
@@ -67,7 +93,8 @@ export const CurveInterpolationService = {
             return {
                 main: {
                     startTime: 0,
-                    interpolation: newInterpolationFormula(formulaSettings),
+                    interpolation:
+                        ConstantInterpolationService.new(formulaSettings),
                 },
                 timeRange: [0, 0],
             }
@@ -94,13 +121,17 @@ export const CurveInterpolationService = {
             ? endPoint[1] - easeOut.distance
             : endPoint[1]
 
+        let interpolation = createNewInterpolationFormula({
+            formulaSettings,
+            startTime: mainStartTime,
+            startDistance: mainStartDistance,
+            endTime: mainEndTime,
+            endDistance: mainEndDistance,
+        })
+
         const main: Fragment = {
             startTime: mainStartTime,
-            interpolation: newInterpolationFormula({
-                ...formulaSettings,
-                startPoint: [mainStartTime, mainStartDistance],
-                endPoint: [mainEndTime, mainEndDistance],
-            }),
+            interpolation,
         }
         let easeOutFragment = calculateEaseOutFragment({
             easeOut,
@@ -220,7 +251,7 @@ const calculateFragment = (fragment: Fragment, time: number): number => {
 }
 
 const calculateInterpolationFormula = (
-    interpolation: InterpolationFormula,
+    interpolation: InterpolationFormulaBase,
     time: number
 ): number => {
     switch (interpolation.type) {
@@ -231,6 +262,11 @@ const calculateInterpolationFormula = (
         case InterpolationTypeEnum.LINEAR:
             return LinearInterpolationService.calculate(
                 interpolation as LinearInterpolationFormula,
+                time
+            )
+        case InterpolationTypeEnum.SINE:
+            return SineInterpolationService.calculate(
+                interpolation as SineInterpolationFormula,
                 time
             )
         default:
@@ -248,11 +284,10 @@ const calculateEaseInFragment = ({
     easeIn?: {
         time: number
         distance: number
-        formulaSettings: Partial<CurveInterpolationNewArgs> &
-            Pick<CurveInterpolationNewArgs, "type">
+        formulaSettings: PartialCurveInterpolationNewArgs
     }
     startPoint: [number, number]
-    formulaWithoutEasing: InterpolationFormula
+    formulaWithoutEasing: InterpolationFormulaBase
 }): Fragment | undefined => {
     if (easeIn == undefined) return undefined
     if (easeIn.time <= 0) return undefined
@@ -263,21 +298,14 @@ const calculateEaseInFragment = ({
     const easeInEndTime = startPoint[0] + easeIn.time
     const easeInEndDistance =
         calculateInterpolationFormula(formulaWithoutEasing, 0) + easeIn.distance
-    let interpolatedArgs: CurveInterpolationNewArgs | undefined = undefined
-    if (easeIn.formulaSettings.type == InterpolationTypeEnum.LINEAR) {
-        interpolatedArgs = {
-            ...easeIn.formulaSettings,
-            startPoint,
-            endPoint: [easeInEndTime, easeInEndDistance],
-        }
-    }
-    if (interpolatedArgs == undefined) {
-        throw new Error(
-            "[CurveInterpolation.calculateEaseInFragment]: could not determine fragment settings"
-        )
-    }
 
-    let easeInFormula = newInterpolationFormula(interpolatedArgs)
+    let easeInFormula = createNewInterpolationFormula({
+        formulaSettings: easeIn.formulaSettings,
+        startTime: startPoint[0],
+        startDistance: startPoint[1],
+        endTime: easeInEndTime,
+        endDistance: easeInEndDistance,
+    })
 
     if (easeInFormula == undefined)
         throw new Error(
@@ -293,6 +321,8 @@ const newInterpolationFormula = (
     formulaSettings: CurveInterpolationNewArgs
 ): InterpolationFormula => {
     switch (formulaSettings.type) {
+        case InterpolationTypeEnum.SINE:
+            return SineInterpolationService.new(formulaSettings)
         case InterpolationTypeEnum.LINEAR:
             return LinearInterpolationService.new(formulaSettings)
         case InterpolationTypeEnum.CONSTANT:
@@ -312,8 +342,7 @@ const calculateEaseOutFragment = ({
     easeOut?: {
         time: number
         distance: number
-        formulaSettings: Partial<CurveInterpolationNewArgs> &
-            Pick<CurveInterpolationNewArgs, "type">
+        formulaSettings: PartialCurveInterpolationNewArgs
     }
     endPoint: [number, number]
     main: Fragment
@@ -330,24 +359,12 @@ const calculateEaseOutFragment = ({
         easeOutStartTime
     )
 
-    let interpolatedArgs: CurveInterpolationNewArgs | undefined = undefined
-    if (easeOut.formulaSettings.type == InterpolationTypeEnum.LINEAR) {
-        interpolatedArgs = {
-            ...easeOut.formulaSettings,
-            startPoint: [easeOutStartTime, easeOutStartDistance],
-            endPoint,
-        }
-    }
-    if (interpolatedArgs == undefined) {
-        throw new Error(
-            "[CurveInterpolation.calculateEaseOutFragment]: could not determine fragment settings"
-        )
-    }
-
-    let easeOutFormula = newInterpolationFormula({
-        ...easeOut.formulaSettings,
-        startPoint: [easeOutStartTime, easeOutStartDistance],
-        endPoint,
+    let easeOutFormula = createNewInterpolationFormula({
+        formulaSettings: easeOut.formulaSettings,
+        startTime: easeOutStartTime,
+        startDistance: easeOutStartDistance,
+        endTime: endPoint[0],
+        endDistance: easeOutStartDistance + easeOut.distance,
     })
 
     return {
@@ -379,7 +396,43 @@ const getStartPointAndEndPointFromArgs = (
             return LinearInterpolationService.deriveStartPointAndEndPointFromArgs(
                 formulaSettings
             )
+        case InterpolationTypeEnum.SINE:
+            return SineInterpolationService.deriveStartPointAndEndPointFromArgs(
+                formulaSettings
+            )
         default:
             throw new Error("Unknown type")
+    }
+}
+
+const createNewInterpolationFormula = ({
+    formulaSettings,
+    startTime,
+    startDistance,
+    endTime,
+    endDistance,
+}: {
+    formulaSettings: PartialCurveInterpolationNewArgs
+    startTime: number
+    startDistance: number
+    endTime: number
+    endDistance: number
+}): InterpolationFormulaBase => {
+    switch (formulaSettings.type) {
+        case InterpolationTypeEnum.LINEAR:
+            return LinearInterpolationService.new({
+                ...formulaSettings,
+                startPoint: [startTime, startDistance],
+                endPoint: [endTime, endDistance],
+            })
+        case InterpolationTypeEnum.SINE:
+            return SineInterpolationService.new({
+                ...formulaSettings,
+                timeRange: [startTime, endTime],
+            })
+        default:
+            throw new Error(
+                "[newInterpolationFormula]: unknown Interpolation type"
+            )
     }
 }

@@ -1,21 +1,24 @@
 import {
-    type InterpolationFormula,
+    type InterpolationFormulaBase,
     InterpolationTypeEnum,
 } from "./interpolationType"
 
-export interface ConstantInterpolationNewArgs extends InterpolationFormula {
+export interface ConstantInterpolationNewArgs extends InterpolationFormulaBase {
     type: typeof InterpolationTypeEnum.CONSTANT
     value: number
 }
 
-export interface ConstantInterpolationFormula extends InterpolationFormula {
+export interface ConstantInterpolationFormula extends InterpolationFormulaBase {
     value: number
 }
 
 export const ConstantInterpolationService = {
     new: ({
         value,
-    }: ConstantInterpolationNewArgs): ConstantInterpolationFormula => {
+    }: Omit<
+        ConstantInterpolationNewArgs,
+        "type"
+    >): ConstantInterpolationFormula => {
         sanitize({
             value,
         })
