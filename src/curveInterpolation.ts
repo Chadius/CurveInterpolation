@@ -1,12 +1,17 @@
 import {
     type LinearInterpolationFormula,
+    type LinearInterpolationNewArgs,
     LinearInterpolationService,
 } from "./linearInterpolation"
 import {
     type InterpolationFormula,
-    type InterpolationType,
     InterpolationTypeEnum,
 } from "./interpolationType"
+import {
+    type ConstantInterpolationFormula,
+    type ConstantInterpolationNewArgs,
+    ConstantInterpolationService,
+} from "./constantInterpolation.ts"
 
 interface Fragment {
     startTime: number
@@ -20,41 +25,56 @@ export interface CurveInterpolation {
     timeRange: [number, number]
 }
 
+export type CurveInterpolationNewArgs =
+    | LinearInterpolationNewArgs
+    | ConstantInterpolationNewArgs
+
 export const CurveInterpolationService = {
     new: ({
-        startPoint,
-        endPoint,
+        formulaSettings,
         easeIn,
         easeOut,
     }: {
-        startPoint: [number, number]
-        endPoint: [number, number]
+        formulaSettings: CurveInterpolationNewArgs
         easeIn?: {
+            formulaSettings: Partial<CurveInterpolationNewArgs> &
+                Pick<CurveInterpolationNewArgs, "type">
             time: number
             distance: number
         }
         easeOut?: {
+            formulaSettings: Partial<CurveInterpolationNewArgs> &
+                Pick<CurveInterpolationNewArgs, "type">
             time: number
             distance: number
         }
     }): CurveInterpolation => {
-        sanitize({
-            startPoint,
-            endPoint,
-            easeIn,
-            easeOut,
-        })
+        if (formulaSettings.type != InterpolationTypeEnum.CONSTANT) {
+            const timeElapsed =
+                LinearInterpolationService.getTimeElapsed(formulaSettings)
+            verifyEaseInOutTimeElapsed({
+                timeElapsed,
+                easeIn,
+                easeOut,
+            })
+        }
 
-        const formulaWithoutEasing = newInterpolationFormula({
-            type: InterpolationTypeEnum.LINEAR,
-            startPoint,
-            endPoint,
-        })
+        const { startPoint, endPoint } =
+            getStartPointAndEndPointFromArgs(formulaSettings)
+        const formulaWithoutEasing = newInterpolationFormula(formulaSettings)
+
+        if (formulaSettings.type == InterpolationTypeEnum.CONSTANT) {
+            return {
+                main: {
+                    startTime: 0,
+                    interpolation: newInterpolationFormula(formulaSettings),
+                },
+                timeRange: [0, 0],
+            }
+        }
 
         let easeInFragment = calculateEaseInFragment({
-            easeIn: easeIn
-                ? { ...easeIn, type: InterpolationTypeEnum.LINEAR }
-                : undefined,
+            easeIn,
             startPoint,
             formulaWithoutEasing,
         })
@@ -77,15 +97,13 @@ export const CurveInterpolationService = {
         const main: Fragment = {
             startTime: mainStartTime,
             interpolation: newInterpolationFormula({
-                type: InterpolationTypeEnum.LINEAR,
+                ...formulaSettings,
                 startPoint: [mainStartTime, mainStartDistance],
                 endPoint: [mainEndTime, mainEndDistance],
             }),
         }
         let easeOutFragment = calculateEaseOutFragment({
-            easeOut: easeOut
-                ? { ...easeOut, type: InterpolationTypeEnum.LINEAR }
-                : undefined,
+            easeOut,
             endPoint,
             main,
         })
@@ -107,30 +125,7 @@ export const CurveInterpolationService = {
     },
 }
 
-const isPointValid = (point: [number, number]): boolean => {
-    if (point == undefined) {
-        return false
-    }
-
-    return point.length >= 2
-}
-
-const sanitizeStartPointAndEndPoint = (
-    startPoint: [number, number],
-    endPoint: [number, number]
-) => {
-    if (!isPointValid(startPoint)) {
-        throw new Error(
-            "[CurveInterpolationService.sanitizeStartPointAndEndPoint]: start point is invalid"
-        )
-    }
-    if (!isPointValid(endPoint)) {
-        throw new Error(
-            "[CurveInterpolationService.sanitizeStartPointAndEndPoint]: end point is invalid"
-        )
-    }
-}
-const sanitizeEaseIn = ({
+const verifyEaseIn = ({
     easeIn,
     timeElapsed,
 }: {
@@ -142,16 +137,16 @@ const sanitizeEaseIn = ({
     switch (true) {
         case easeIn.time < 0:
             throw new Error(
-                "[CurveInterpolationService.sanitizeEaseIn]: easeIn.time cannot be negative"
+                "[CurveInterpolationService.verifyEaseIn]: easeIn.time cannot be negative"
             )
         case easeIn.time > timeElapsed:
             throw new Error(
-                "[CurveInterpolationService.sanitizeEaseIn]: easeIn.time must be less than the elapsed time"
+                "[CurveInterpolationService.verifyEaseIn]: easeIn.time must be less than the elapsed time"
             )
     }
 }
 
-const sanitizeEaseOut = ({
+const verifyEaseOut = ({
     easeOut,
     timeElapsed,
 }: {
@@ -163,16 +158,16 @@ const sanitizeEaseOut = ({
     switch (true) {
         case easeOut.time < 0:
             throw new Error(
-                "[CurveInterpolationService.sanitizeEaseOut]: easeOut.time cannot be negative"
+                "[CurveInterpolationService.verifyEaseOut]: easeOut.time cannot be negative"
             )
         case easeOut.time > timeElapsed:
             throw new Error(
-                "[CurveInterpolationService.sanitizeEaseOut]: easeOut.time must be less than the elapsed time"
+                "[CurveInterpolationService.verifyEaseOut]: easeOut.time must be less than the elapsed time"
             )
     }
 }
 
-const sanitizeEaseInAndEaseOut = ({
+const verifyEaseInAndEaseOut = ({
     easeOut,
     easeIn,
     timeElapsed,
@@ -185,19 +180,17 @@ const sanitizeEaseInAndEaseOut = ({
 
     if (easeIn.time + easeOut.time > timeElapsed) {
         throw new Error(
-            "[CurveInterpolationService.sanitizeEaseInAndEaseOut]: easeIn.time + easeOut.time must be less than the elapsed time"
+            "[CurveInterpolationService.verifyEaseInAndEaseOut]: easeIn.time + easeOut.time must be less than the elapsed time"
         )
     }
 }
 
-const sanitize = ({
-    startPoint,
-    endPoint,
+const verifyEaseInOutTimeElapsed = ({
+    timeElapsed,
     easeIn,
     easeOut,
 }: {
-    startPoint: [number, number]
-    endPoint: [number, number]
+    timeElapsed: number
     easeIn?: {
         time: number
         distance: number
@@ -207,23 +200,15 @@ const sanitize = ({
         distance: number
     }
 }) => {
-    sanitizeStartPointAndEndPoint(startPoint, endPoint)
-
-    const timeElapsed = endPoint[0] - startPoint[0]
-    if (timeElapsed == 0) {
-        throw new Error(
-            "[CurveInterpolationService.sanitize]: start point and end point must have different time values"
-        )
-    }
-    sanitizeEaseIn({
+    verifyEaseIn({
         easeIn: easeIn,
         timeElapsed: timeElapsed,
     })
-    sanitizeEaseOut({
+    verifyEaseOut({
         easeOut: easeOut,
         timeElapsed: timeElapsed,
     })
-    sanitizeEaseInAndEaseOut({
+    verifyEaseInAndEaseOut({
         easeOut: easeOut,
         easeIn: easeIn,
         timeElapsed: timeElapsed,
@@ -238,13 +223,21 @@ const calculateInterpolationFormula = (
     interpolation: InterpolationFormula,
     time: number
 ): number => {
-    if (interpolation.type == InterpolationTypeEnum.LINEAR) {
-        return LinearInterpolationService.calculate(
-            interpolation as LinearInterpolationFormula,
-            time
-        )
+    switch (interpolation.type) {
+        case InterpolationTypeEnum.CONSTANT:
+            return ConstantInterpolationService.calculate(
+                interpolation as ConstantInterpolationFormula
+            )
+        case InterpolationTypeEnum.LINEAR:
+            return LinearInterpolationService.calculate(
+                interpolation as LinearInterpolationFormula,
+                time
+            )
+        default:
+            throw new Error(
+                "[CurveInterpolationService.calculateInterpolationFormula]: Unsupported interpolation type"
+            )
     }
-    return 0
 }
 
 const calculateEaseInFragment = ({
@@ -252,22 +245,40 @@ const calculateEaseInFragment = ({
     startPoint,
     formulaWithoutEasing,
 }: {
-    easeIn?: { time: number; distance: number; type: InterpolationType }
+    easeIn?: {
+        time: number
+        distance: number
+        formulaSettings: Partial<CurveInterpolationNewArgs> &
+            Pick<CurveInterpolationNewArgs, "type">
+    }
     startPoint: [number, number]
     formulaWithoutEasing: InterpolationFormula
 }): Fragment | undefined => {
     if (easeIn == undefined) return undefined
     if (easeIn.time <= 0) return undefined
     if (easeIn.distance == 0) return undefined
+    if (easeIn.formulaSettings.type == InterpolationTypeEnum.CONSTANT)
+        return undefined
 
     const easeInEndTime = startPoint[0] + easeIn.time
     const easeInEndDistance =
         calculateInterpolationFormula(formulaWithoutEasing, 0) + easeIn.distance
-    let easeInFormula = newInterpolationFormula({
-        type: easeIn.type,
-        startPoint,
-        endPoint: [easeInEndTime, easeInEndDistance],
-    })
+    let interpolatedArgs: CurveInterpolationNewArgs | undefined = undefined
+    if (easeIn.formulaSettings.type == InterpolationTypeEnum.LINEAR) {
+        interpolatedArgs = {
+            ...easeIn.formulaSettings,
+            startPoint,
+            endPoint: [easeInEndTime, easeInEndDistance],
+        }
+    }
+    if (interpolatedArgs == undefined) {
+        throw new Error(
+            "[CurveInterpolation.calculateEaseInFragment]: could not determine fragment settings"
+        )
+    }
+
+    let easeInFormula = newInterpolationFormula(interpolatedArgs)
+
     if (easeInFormula == undefined)
         throw new Error(
             "[CurveInterpolation.calculateEaseInFragment]: easeInFormula is undefined"
@@ -278,19 +289,19 @@ const calculateEaseInFragment = ({
     }
 }
 
-const newInterpolationFormula = ({
-    type,
-    startPoint,
-    endPoint,
-}: {
-    type: InterpolationType
-    startPoint: [number, number]
-    endPoint: [number, number]
-}): InterpolationFormula => {
-    if (type == InterpolationTypeEnum.LINEAR) {
-        return LinearInterpolationService.new({ startPoint, endPoint })
+const newInterpolationFormula = (
+    formulaSettings: CurveInterpolationNewArgs
+): InterpolationFormula => {
+    switch (formulaSettings.type) {
+        case InterpolationTypeEnum.LINEAR:
+            return LinearInterpolationService.new(formulaSettings)
+        case InterpolationTypeEnum.CONSTANT:
+            return ConstantInterpolationService.new(formulaSettings)
+        default:
+            throw new Error(
+                "[newInterpolationFormula]: unknown Interpolation type"
+            )
     }
-    throw new Error("[newInterpolationFormula]: unknown Interpolation type")
 }
 
 const calculateEaseOutFragment = ({
@@ -298,13 +309,20 @@ const calculateEaseOutFragment = ({
     endPoint,
     main,
 }: {
-    easeOut?: { time: number; distance: number; type: InterpolationType }
+    easeOut?: {
+        time: number
+        distance: number
+        formulaSettings: Partial<CurveInterpolationNewArgs> &
+            Pick<CurveInterpolationNewArgs, "type">
+    }
     endPoint: [number, number]
     main: Fragment
 }) => {
     if (easeOut == undefined) return undefined
     if (easeOut.time <= 0) return undefined
     if (easeOut.distance < 0) return undefined
+    if (easeOut.formulaSettings.type == InterpolationTypeEnum.CONSTANT)
+        return undefined
 
     const easeOutStartTime = endPoint[0] - easeOut.time
     const easeOutStartDistance = calculateInterpolationFormula(
@@ -312,8 +330,22 @@ const calculateEaseOutFragment = ({
         easeOutStartTime
     )
 
+    let interpolatedArgs: CurveInterpolationNewArgs | undefined = undefined
+    if (easeOut.formulaSettings.type == InterpolationTypeEnum.LINEAR) {
+        interpolatedArgs = {
+            ...easeOut.formulaSettings,
+            startPoint: [easeOutStartTime, easeOutStartDistance],
+            endPoint,
+        }
+    }
+    if (interpolatedArgs == undefined) {
+        throw new Error(
+            "[CurveInterpolation.calculateEaseOutFragment]: could not determine fragment settings"
+        )
+    }
+
     let easeOutFormula = newInterpolationFormula({
-        type: InterpolationTypeEnum.LINEAR,
+        ...easeOut.formulaSettings,
         startPoint: [easeOutStartTime, easeOutStartDistance],
         endPoint,
     })
@@ -332,5 +364,22 @@ const calculate = (formula: CurveInterpolation, time: number): number => {
             return calculateFragment(formula.easeOut, time)
         default:
             return calculateFragment(formula.main, time)
+    }
+}
+
+const getStartPointAndEndPointFromArgs = (
+    formulaSettings: CurveInterpolationNewArgs
+) => {
+    switch (formulaSettings.type) {
+        case InterpolationTypeEnum.CONSTANT:
+            return ConstantInterpolationService.deriveStartPointAndEndPointFromArgs(
+                formulaSettings
+            )
+        case InterpolationTypeEnum.LINEAR:
+            return LinearInterpolationService.deriveStartPointAndEndPointFromArgs(
+                formulaSettings
+            )
+        default:
+            throw new Error("Unknown type")
     }
 }

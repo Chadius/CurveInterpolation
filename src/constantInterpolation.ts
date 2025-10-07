@@ -3,12 +3,19 @@ import {
     InterpolationTypeEnum,
 } from "./interpolationType"
 
+export interface ConstantInterpolationNewArgs extends InterpolationFormula {
+    type: typeof InterpolationTypeEnum.CONSTANT
+    value: number
+}
+
 export interface ConstantInterpolationFormula extends InterpolationFormula {
     value: number
 }
 
 export const ConstantInterpolationService = {
-    new: ({ value }: { value: number }): ConstantInterpolationFormula => {
+    new: ({
+        value,
+    }: ConstantInterpolationNewArgs): ConstantInterpolationFormula => {
         sanitize({
             value,
         })
@@ -20,6 +27,17 @@ export const ConstantInterpolationService = {
     },
     calculate: (formula: ConstantInterpolationFormula): number => {
         return formula.value
+    },
+    deriveStartPointAndEndPointFromArgs: (
+        args: ConstantInterpolationNewArgs
+    ): {
+        startPoint: [number, number]
+        endPoint: [number, number]
+    } => {
+        return {
+            startPoint: [0, args.value],
+            endPoint: [0, args.value],
+        }
     },
 }
 

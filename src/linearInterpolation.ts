@@ -3,6 +3,12 @@ import {
     InterpolationTypeEnum,
 } from "./interpolationType"
 
+export interface LinearInterpolationNewArgs extends InterpolationFormula {
+    type: typeof InterpolationTypeEnum.LINEAR
+    startPoint: [number, number]
+    endPoint: [number, number]
+}
+
 export interface LinearInterpolationFormula extends InterpolationFormula {
     slope: number
     offset: number
@@ -14,10 +20,7 @@ export const LinearInterpolationService = {
     new: ({
         startPoint,
         endPoint,
-    }: {
-        startPoint: [number, number]
-        endPoint: [number, number]
-    }): LinearInterpolationFormula => {
+    }: LinearInterpolationNewArgs): LinearInterpolationFormula => {
         sanitize({
             startPoint,
             endPoint,
@@ -47,6 +50,26 @@ export const LinearInterpolationService = {
                 return formula.endPoint[1]
             default:
                 return formula.slope * timeElapsed + formula.offset
+        }
+    },
+    getTimeElapsed: (args: LinearInterpolationNewArgs): number => {
+        if (args == undefined) {
+            throw new Error(
+                "[LinearInterpolationService.getTimeElapsed]: args must be defined"
+            )
+        }
+
+        return args.endPoint[0] - args.startPoint[0]
+    },
+    deriveStartPointAndEndPointFromArgs: (
+        args: LinearInterpolationNewArgs
+    ): {
+        startPoint: [number, number]
+        endPoint: [number, number]
+    } => {
+        return {
+            startPoint: args.startPoint,
+            endPoint: args.endPoint,
         }
     },
 }
