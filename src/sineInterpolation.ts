@@ -70,7 +70,7 @@ export const SineInterpolationService = {
 
         return formulaSettings.timeRange.at(-1)! - formulaSettings.timeRange[0]
     },
-    deriveStartPointAndEndPointFromArgs: (
+    deriveAllPointsFromArgs: (
         formulaSettings: SineInterpolationNewArgs
     ): {
         startPoint: [number, number]

@@ -64,7 +64,7 @@ export const LinearInterpolationService = {
 
         return args.endPoint[0] - args.startPoint[0]
     },
-    deriveStartPointAndEndPointFromArgs: (
+    deriveAllPointsFromArgs: (
         args: LinearInterpolationNewArgs
     ): {
         startPoint: [number, number]

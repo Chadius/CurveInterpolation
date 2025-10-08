@@ -31,7 +31,7 @@ export const ConstantInterpolationService = {
     calculate: (formula: ConstantInterpolationFormula): number => {
         return formula.value
     },
-    deriveStartPointAndEndPointFromArgs: (
+    deriveAllPointsFromArgs: (
         args: ConstantInterpolationNewArgs
     ): {
         startPoint: [number, number]

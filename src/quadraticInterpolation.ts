@@ -96,7 +96,7 @@ export const QuadraticInterpolationService = {
             .toSorted((a, b) => a - b)
         return timeValues[2] - timeValues[0]
     },
-    deriveStartPointAndEndPointFromArgs: (
+    deriveAllPointsFromArgs: (
         args: QuadraticInterpolationNewArgs
     ): {
         startPoint: [number, number]
@@ -105,7 +105,7 @@ export const QuadraticInterpolationService = {
         validateAllPoints(args.points)
         return {
             startPoint: args.points[0],
-            endPoint: args.points[1],
+            endPoint: args.points[2],
         }
     },
 }

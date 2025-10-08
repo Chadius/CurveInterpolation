@@ -3,10 +3,7 @@ import {
     type LinearInterpolationNewArgs,
     LinearInterpolationService,
 } from "./linearInterpolation"
-import {
-    type InterpolationFormulaBase,
-    InterpolationTypeEnum,
-} from "./interpolationType"
+import { InterpolationTypeEnum } from "./interpolationType"
 import {
     type ConstantInterpolationFormula,
     type ConstantInterpolationNewArgs,
@@ -17,10 +14,15 @@ import {
     type SineInterpolationNewArgs,
     SineInterpolationService,
 } from "./sineInterpolation.ts"
+import {
+    type QuadraticInterpolationFormula,
+    type QuadraticInterpolationNewArgs,
+    QuadraticInterpolationService,
+} from "./quadraticInterpolation.ts"
 
 interface Fragment {
     startTime: number
-    interpolation: InterpolationFormulaBase
+    interpolation: InterpolationFormula
 }
 
 export interface CurveInterpolation {
@@ -33,11 +35,13 @@ export interface CurveInterpolation {
 type InterpolationFormula =
     | ConstantInterpolationFormula
     | LinearInterpolationFormula
+    | QuadraticInterpolationFormula
     | SineInterpolationFormula
 
 export type CurveInterpolationNewArgs =
     | ConstantInterpolationNewArgs
     | LinearInterpolationNewArgs
+    | QuadraticInterpolationNewArgs
     | SineInterpolationNewArgs
 
 export type PartialCurveInterpolationNewArgs =
@@ -45,6 +49,8 @@ export type PartialCurveInterpolationNewArgs =
           Pick<ConstantInterpolationNewArgs, "type">)
     | (Partial<LinearInterpolationNewArgs> &
           Pick<LinearInterpolationNewArgs, "type">)
+    | (Partial<QuadraticInterpolationNewArgs> &
+          Pick<QuadraticInterpolationNewArgs, "type" | "points">)
     | (Partial<SineInterpolationNewArgs> &
           Pick<SineInterpolationNewArgs, "type" | "frequency" | "amplitude">)
 
@@ -72,6 +78,12 @@ export const CurveInterpolationService = {
                 timeElapsed =
                     LinearInterpolationService.getTimeElapsed(formulaSettings)
                 break
+            case InterpolationTypeEnum.QUADRATIC:
+                timeElapsed =
+                    QuadraticInterpolationService.getTimeElapsed(
+                        formulaSettings
+                    )
+                break
             case InterpolationTypeEnum.SINE:
                 timeElapsed =
                     SineInterpolationService.getTimeElapsed(formulaSettings)
@@ -86,7 +98,7 @@ export const CurveInterpolationService = {
         }
 
         const { startPoint, endPoint } =
-            getStartPointAndEndPointFromArgs(formulaSettings)
+            deriveAllPointsFromArgs(formulaSettings)
         const formulaWithoutEasing = newInterpolationFormula(formulaSettings)
 
         if (formulaSettings.type == InterpolationTypeEnum.CONSTANT) {
@@ -121,10 +133,18 @@ export const CurveInterpolationService = {
             ? endPoint[1] - easeOut.distance
             : endPoint[1]
 
+        const mainMidTime = (mainStartTime + mainEndTime) / 2
+        const mainMidDistance = calculateInterpolationFormula(
+            formulaWithoutEasing,
+            mainMidTime
+        )
+
         let interpolation = createNewInterpolationFormula({
             formulaSettings,
             startTime: mainStartTime,
             startDistance: mainStartDistance,
+            midTime: mainMidTime,
+            midDistance: mainMidDistance,
             endTime: mainEndTime,
             endDistance: mainEndDistance,
         })
@@ -251,7 +271,7 @@ const calculateFragment = (fragment: Fragment, time: number): number => {
 }
 
 const calculateInterpolationFormula = (
-    interpolation: InterpolationFormulaBase,
+    interpolation: InterpolationFormula,
     time: number
 ): number => {
     switch (interpolation.type) {
@@ -262,6 +282,11 @@ const calculateInterpolationFormula = (
         case InterpolationTypeEnum.LINEAR:
             return LinearInterpolationService.calculate(
                 interpolation as LinearInterpolationFormula,
+                time
+            )
+        case InterpolationTypeEnum.QUADRATIC:
+            return QuadraticInterpolationService.calculate(
+                interpolation as QuadraticInterpolationFormula,
                 time
             )
         case InterpolationTypeEnum.SINE:
@@ -287,7 +312,7 @@ const calculateEaseInFragment = ({
         formulaSettings: PartialCurveInterpolationNewArgs
     }
     startPoint: [number, number]
-    formulaWithoutEasing: InterpolationFormulaBase
+    formulaWithoutEasing: InterpolationFormula
 }): Fragment | undefined => {
     if (easeIn == undefined) return undefined
     if (easeIn.time <= 0) return undefined
@@ -299,10 +324,18 @@ const calculateEaseInFragment = ({
     const easeInEndDistance =
         calculateInterpolationFormula(formulaWithoutEasing, 0) + easeIn.distance
 
+    const easeOutMidTime = (easeInEndTime + startPoint[0]) / 2
+    const easeOutMidDistance = calculateInterpolationFormula(
+        formulaWithoutEasing,
+        easeOutMidTime
+    )
+
     let easeInFormula = createNewInterpolationFormula({
         formulaSettings: easeIn.formulaSettings,
         startTime: startPoint[0],
         startDistance: startPoint[1],
+        midTime: easeOutMidDistance,
+        midDistance: easeOutMidDistance,
         endTime: easeInEndTime,
         endDistance: easeInEndDistance,
     })
@@ -359,10 +392,18 @@ const calculateEaseOutFragment = ({
         easeOutStartTime
     )
 
+    const easeOutMidTime = (easeOutStartTime + endPoint[0]) / 2
+    const easeOutMidDistance = calculateInterpolationFormula(
+        main.interpolation,
+        easeOutMidTime
+    )
+
     let easeOutFormula = createNewInterpolationFormula({
         formulaSettings: easeOut.formulaSettings,
         startTime: easeOutStartTime,
         startDistance: easeOutStartDistance,
+        midTime: easeOutMidDistance,
+        midDistance: easeOutMidDistance,
         endTime: endPoint[0],
         endDistance: easeOutStartDistance + easeOut.distance,
     })
@@ -384,20 +425,24 @@ const calculate = (formula: CurveInterpolation, time: number): number => {
     }
 }
 
-const getStartPointAndEndPointFromArgs = (
+const deriveAllPointsFromArgs = (
     formulaSettings: CurveInterpolationNewArgs
 ) => {
     switch (formulaSettings.type) {
         case InterpolationTypeEnum.CONSTANT:
-            return ConstantInterpolationService.deriveStartPointAndEndPointFromArgs(
+            return ConstantInterpolationService.deriveAllPointsFromArgs(
                 formulaSettings
             )
         case InterpolationTypeEnum.LINEAR:
-            return LinearInterpolationService.deriveStartPointAndEndPointFromArgs(
+            return LinearInterpolationService.deriveAllPointsFromArgs(
+                formulaSettings
+            )
+        case InterpolationTypeEnum.QUADRATIC:
+            return QuadraticInterpolationService.deriveAllPointsFromArgs(
                 formulaSettings
             )
         case InterpolationTypeEnum.SINE:
-            return SineInterpolationService.deriveStartPointAndEndPointFromArgs(
+            return SineInterpolationService.deriveAllPointsFromArgs(
                 formulaSettings
             )
         default:
@@ -409,21 +454,34 @@ const createNewInterpolationFormula = ({
     formulaSettings,
     startTime,
     startDistance,
+    midTime,
+    midDistance,
     endTime,
     endDistance,
 }: {
     formulaSettings: PartialCurveInterpolationNewArgs
     startTime: number
     startDistance: number
+    midTime: number
+    midDistance: number
     endTime: number
     endDistance: number
-}): InterpolationFormulaBase => {
+}): InterpolationFormula => {
     switch (formulaSettings.type) {
         case InterpolationTypeEnum.LINEAR:
             return LinearInterpolationService.new({
                 ...formulaSettings,
                 startPoint: [startTime, startDistance],
                 endPoint: [endTime, endDistance],
+            })
+        case InterpolationTypeEnum.QUADRATIC:
+            return QuadraticInterpolationService.new({
+                ...formulaSettings,
+                points: [
+                    [startTime, startDistance],
+                    [midTime, midDistance],
+                    [endTime, endDistance],
+                ],
             })
         case InterpolationTypeEnum.SINE:
             return SineInterpolationService.new({
