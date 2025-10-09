@@ -16,15 +16,14 @@ describe("curveInterpolation", () => {
                         endPoint: [2, 2],
                     },
                     easeIn: {
-                        formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                        time: -1,
-                        distance: 1,
+                        realTime: -1,
+                        formulaTime: 1,
                     },
                 })
             }
 
             expect(shouldThrowErrorBecauseNegative).toThrowError(
-                "easeIn.time cannot be negative"
+                "times must be non-negative"
             )
 
             const shouldThrowErrorBecauseTooBig = () => {
@@ -35,15 +34,14 @@ describe("curveInterpolation", () => {
                         endPoint: [2, 2],
                     },
                     easeIn: {
-                        formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                        time: 9001,
-                        distance: 1,
+                        realTime: 9001,
+                        formulaTime: 9002,
                     },
                 })
             }
 
             expect(shouldThrowErrorBecauseTooBig).toThrowError(
-                "easeIn.time must be less than the elapsed time"
+                "times must be less than the total time"
             )
         })
         it("throws an error if ease out time is invalid", () => {
@@ -55,15 +53,14 @@ describe("curveInterpolation", () => {
                         endPoint: [2, 2],
                     },
                     easeOut: {
-                        formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                        time: -1,
-                        distance: 1,
+                        realTime: -1,
+                        formulaTime: 1,
                     },
                 })
             }
 
             expect(shouldThrowErrorBecauseNegative).toThrowError(
-                "easeOut.time cannot be negative"
+                "times must be non-negative"
             )
 
             const shouldThrowErrorBecauseTooBig = () => {
@@ -74,15 +71,14 @@ describe("curveInterpolation", () => {
                         endPoint: [2, 2],
                     },
                     easeOut: {
-                        formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                        time: 9001,
-                        distance: 1,
+                        realTime: 9001,
+                        formulaTime: 9002,
                     },
                 })
             }
 
             expect(shouldThrowErrorBecauseTooBig).toThrowError(
-                "easeOut.time must be less than the elapsed time"
+                "times must be less than the total time"
             )
         })
         it("throws an error if ease in plus ease out time take longer than the elapsed time", () => {
@@ -94,20 +90,18 @@ describe("curveInterpolation", () => {
                         endPoint: [2, 2],
                     },
                     easeIn: {
-                        formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                        time: 2,
-                        distance: 1,
+                        realTime: 2,
+                        formulaTime: 1,
                     },
                     easeOut: {
-                        formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                        time: 2,
-                        distance: 1,
+                        realTime: 1,
+                        formulaTime: 1,
                     },
                 })
             }
 
             expect(shouldThrowErrorBecauseTooBig).toThrowError(
-                "easeIn.time + easeOut.time must be less than the elapsed time"
+                "easeIn + easeOut times must be less than the total time"
             )
         })
     })
@@ -118,6 +112,14 @@ describe("curveInterpolation", () => {
                 type: InterpolationTypeEnum.LINEAR,
                 startPoint: [0, 0],
                 endPoint: [8, 8],
+            },
+            easeIn: {
+                realTime: 1,
+                formulaTime: 1,
+            },
+            easeOut: {
+                realTime: 1,
+                formulaTime: 1,
             },
         })
 
@@ -153,9 +155,8 @@ describe("curveInterpolation", () => {
                     endPoint: [8, 8],
                 },
                 easeIn: {
-                    formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                    time: 4,
-                    distance: 2,
+                    realTime: 4,
+                    formulaTime: 2,
                 },
             })
 
@@ -175,6 +176,7 @@ describe("curveInterpolation", () => {
                 8
             )
         })
+
         it("will use ease out interpolation until ease in ends", () => {
             const formula = CurveInterpolationService.new({
                 formulaSettings: {
@@ -183,9 +185,8 @@ describe("curveInterpolation", () => {
                     endPoint: [8, 8],
                 },
                 easeOut: {
-                    formulaSettings: { type: InterpolationTypeEnum.LINEAR },
-                    time: 4,
-                    distance: 2,
+                    realTime: 4,
+                    formulaTime: 2,
                 },
             })
 

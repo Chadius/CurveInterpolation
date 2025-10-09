@@ -2,72 +2,218 @@
 
 Create a reusable mathematical formula object to move between 2 points on the x-axis over time.
 
-You can ease in and ease out of the animation using different parameters.
+This was built with movement animation in mind, where you can ease in and ease out to speed up the movement in a more natural manner. 
 
-This idea came about as I was trying to write animation functions and realized I could apply some animation principles just by adding ease in and ease out functions. There is also a great GitHub folder called [Optimized Easing Functions by Michael "Code Poet" Pohoreski, aka Michaelangel007](https://github.com/Michaelangel007/easing) that was a source of more inspiration.
+# Examples
 
-# How to Use
+## Simple Linear Formula
+```typescript
+import { InterpolationTypeEnum } from "./interpolationType"
+import {
+    ConstantInterpolationService,
+} from "./constantInterpolation.ts"
 
-1. `CurveInterpolationService.new()` is your entry point to create a new object.
-2. Call `CurveInterpolationService.calculate()` with the new curve and time. This will return the distance.
+const formula = CurveInterpolationService.new({
+    formulaSettings: {
+        type: InterpolationTypeEnum.LINEAR,
+        startPoint: [1, 0],
+        endPoint: [9, 4],
+    },
+})
 
+CurveInterpolationService.calculate(formula, 0) //0
+CurveInterpolationService.calculate(formula, 1) //0
+CurveInterpolationService.calculate(formula, 3) //1
+CurveInterpolationService.calculate(formula, 5) //2
+CurveInterpolationService.calculate(formula, 7) //3
+CurveInterpolationService.calculate(formula, 9) //4
+```
+
+The `new` command here creates a linear formula whose results range from 0 to 4. You can use it to calculate results for a given time using the `calculate` function. The formula expects a range from 1 to 9, and will clamp to before 1 or after 9.
+
+## Linear Formula with ease in
+```typescript
+const formula = CurveInterpolationService.new({
+    formulaSettings: {
+        type: InterpolationTypeEnum.LINEAR,
+        startPoint: [0, 0],
+        endPoint: [8, 8],
+    },
+    easeIn: {
+        realTime: 4,
+        formulaTime: 2,
+    },
+})
+
+CurveInterpolationService.calculate(formula, 2) //1
+CurveInterpolationService.calculate(formula, 4) //2
+CurveInterpolationService.calculate(formula, 6) //5
+CurveInterpolationService.calculate(formula, 8) //8
+```
+The first 4 seconds of real time will be treated like the first 2 seconds of the formula. So the first 4 seconds will move at half the expected speed. 
+This formula will speed up afterward to compensate so it has a value of 8 after 8 seconds.
+
+## Linear Formula with ease in and ease out
+```typescript
+const formula = CurveInterpolationService.new({
+    formulaSettings: {
+        type: InterpolationTypeEnum.LINEAR,
+        startPoint: [0, 0],
+        endPoint: [8, 8],
+    },
+    easeIn: {
+        realTime: 3,
+        formulaTime: 2,
+    },
+    easeOut: {
+        realTime: 3,
+        formulaTime: 2,
+    },
+})
+
+CurveInterpolationService.calculate(formula, 0) //0
+CurveInterpolationService.calculate(formula, 3) //2
+CurveInterpolationService.calculate(formula, 4) //4
+CurveInterpolationService.calculate(formula, 5) //6
+CurveInterpolationService.calculate(formula, 8) //8
+```
+`easeOut` is similar to `easeIn`, except it affects the end of the formula. Usually the formula will speed up until it reaches the end and then slow down as it eases out. You can combine `easeIn` and `easeOut` to change the speed.
+
+## Sine Interpolation
+```typescript
+import { InterpolationTypeEnum } from "./interpolationType"
+import {
+    ConstantInterpolationService,
+} from "./constantInterpolation.ts"
+
+const formula = CurveInterpolationService.new({
+    formulaSettings: {
+        type: InterpolationTypeEnum.SINE,
+        timeRange: [2, 12],
+        amplitude: 5,
+        frequency: 2,
+        phaseShift: 1,
+        verticalShift: 3,
+    },
+})
+
+CurveInterpolationService.calculate(formula, 2.5) //2
+CurveInterpolationService.calculate(formula, 7) //3
+```
+Curves can be sinusoidal and use the sine function to produce sine waves.
+
+# Reference
 ## CurveInterpolationService.new()
+Use this function to create a new formula. This function will throw errors if any are found.
 
-This is a general purpose situation where curves can be built with an ease in, the main travel, and an ease out motion.
-Use this to create new curves.
+```typescript
+let new = ({
+     formulaSettings,
+     easeIn,
+     easeOut,
+ }: {
+    formulaSettings: CurveInterpolationNewArgs
+    easeIn?: {
+        realTime: number
+        formulaTime: number
+    }
+    easeOut?: {
+        realTime: number
+        formulaTime: number
+    }
+}) => CurveInterpolation
+```
 
-Here's a list of parameters:
+- `formulaSettings`: describe the formula you want to represent. More on that below.
+- `easeIn` (optional): You can change the speed at which the formula starts. You must specify how much real time this will take from the formula as well as how much of the formula time it will take.  
+- `easeOut` (optional): You can change the speed at which the formula ends. These use the same parameters as `easeIn`.
 
-### Start Point
+easeIn and easeOut's times have the following restrictions:
+- Times must be non-negative
+- Adding easeIn and easeOut's time must not exceed the overall length of the formula.
 
-An array with 2 numbers representing the start time and distance. (t0, x0)
-The curve will begin here.
+### formulaSettings
+#### Constant
+Always returns a constant value, no matter what time you use.
 
-### End Point
+```typescript
+let formulaSettings = {
+    type: InterpolationTypeEnum.CONSTANT,
+    value: number,
+}
+```
 
-An array with 2 numbers representing the end time and distance. (t1, x1)
-The curve will end here.
+- `type`: Use `InterpolationTypeEnum.CONSTANT`
+- `value`: The value the formula will always return.
 
-### Ease In
+#### Linear
+Interpolates between the start and end points in a linear fashion.
 
-This is a startup curve that can be used to control the initial behavior. Maybe you want the position to slowly accelerate to full speed, or you want a quick explosion as it plateaus.
-This field is Optional, can be left undefined.
+```typescript
+let formulaSettings: {
+    type: InterpolationTypeEnum.LINEAR,
+    startPoint: [number, number],
+    endPoint: [number, number]
+}
+```
 
-- This will throw an error if Ease In + Ease Out is more than (t1 - t0).
-- This will throw an error if Ease In + Ease Out is more than (x1 - x0).
+- `type`: Use `InterpolationTypeEnum.LINEAR`
+- `startPoint`: Two numbers representing the start time of the formula and the starting value.
+- `endPoint`: Two numbers representing the end time of the formula and the ending value.
 
-#### Time
+`startPoint` and `endPoint` must start at different times.
 
-A number representing how long it takes to reach the maximum linear speed.
-Will throw an error if it is negative.
+#### Quadratic
+Interpolates between the 3 points using a parabola that connects them.
 
-#### Distance
+```typescript
+let formulaSettings: {
+    type: InterpolationTypeEnum.QUADRATIC,
+    points: [[number, number],[number, number],[number, number]],
+}
+```
 
-A number representing how far it eases in, relative to the start point x0. Needs to be a non-zero value.
+- `type`: Use `InterpolationTypeEnum.QUADRATIC`
+- `points`: Three pairs of two numbers representing the time and value at 3 different points in the parabola.
 
-### Ease Out
+Some restrictions on `points`:
+- All of them must have different start times.
+- If all 3 points are collinear, the equation will collapse into a line or a constant curve. This will not throw an error.
 
-This curve can be used to control the final behavior of the curve. Maybe it slows to a gradual stop, or it rockets off
-at full speed.
-This field is Optional, can be left undefined.
+#### Sine
+Using `sin(time)` this will draw a never ending curve that wavers up and down.
 
-- This will throw an error if Ease In + Ease Out is more than (t1 - t0).
+```typescript
+let formulaSettings: {
+    type: InterpolationTypeEnum.SINE,
+    timeRange: [number, number],
+    amplitude: number,
+    frequency: number,
+    phaseShift?: number,
+    verticalShift?: number,
+}
+```
 
-#### Time
+- `type`: Use `InterpolationTypeEnum.SINE`
+- `timeRange`: Two numbers representing the start and end time of the formula.
+- `amplitude`: A single number representing the peak of the sine curve from the middle. The curve's total height is twice the amplitude.
+- `frequency`: The number of complete oscillations per second. A complete oscillation will move up, hit the peak, move down, cross the middle, hit the bottom peak, then move up to the middle again. Inverse of the Period.
+- `phaseShift` (optional): Default is 0, where the curve will start at the bottom and move up towards the peak. A positive `phaseShift` value will start later (think of moving the curve to the left.) For example, setting this to one quarter of the Period will turn the sine wave into a cosine wave. 
+- `verticalShift` (optional): Default is 0, where the curve will oscillate between + and - `amplitude`. A positive `verticalShift` will increase the results (think of raising the curve.) So a value of `amplitude` means the curve will vary from 0 to `2 * amplitude`.
 
-A number representing how long it takes to slow down while reaching t1. So 1 means it will start easing out at t1 - 1.
+`frequency` must be a positive number.
+`timeRange` must have 2 different numbers.
 
-If time is 0 Ease Out is ignored.
-Will throw an error if it is negative.
+## CurveInterpolationService.calculate()
+With a given formula and real time, use the formula to calculate the result. Returns a number.
 
-#### Distance
+```typescript
+calculate: (formula: CurveInterpolation, time: number) => number
+```
 
-A number representing what distance it begins to ease out, relative to the end point x1. Needs to be a non-zero value.
+- `formula`: Created using `CurveInterpolationService.new()`.
+- `time`: a number in real time.
 
-## Interpolation Types
-
-You can specify the type of interpolation using strings to define the underlying formula.
-
-### LINEAR: Linear Interpolation
-
-With linear interpolation, you will travel from a start point to an x point in a certain amount of time by moving in a constant speed.
+If `time` is before the formula starts, it will return the starting value.
+If `time` is after the formula starts, it will return the ending value.
+Otherwise, `time` is applied. 
