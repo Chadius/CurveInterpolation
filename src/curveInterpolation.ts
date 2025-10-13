@@ -306,6 +306,8 @@ const newInterpolationFormula = (
             return LinearInterpolationService.new(formulaSettings)
         case InterpolationTypeEnum.CONSTANT:
             return ConstantInterpolationService.new(formulaSettings)
+        case InterpolationTypeEnum.QUADRATIC:
+            return QuadraticInterpolationService.new(formulaSettings)
         default:
             throw new Error(
                 "[newInterpolationFormula]: unknown Interpolation type"
